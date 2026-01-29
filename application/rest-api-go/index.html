@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>POS Blockchain Dashboard</title>
+    <link rel="icon" href="data:,">
+    <style>
+        body { font-family: sans-serif; margin: 40px; background: #f4f4f4; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input { display: block; width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
+        th { background-color: #007bff; color: white; text-transform: uppercase; font-size: 12px; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f1f1; }
+
+        /* Add this to your <style> section */
+#recentActivityList {
+    max-height: 300px; /* Adjust height to fit roughly 4 items */
+    overflow-y: auto;
+    padding-right: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background: #fafafa;
+}
+
+/* Custom scrollbar styling for a cleaner look */
+#recentActivityList::-webkit-scrollbar {
+    width: 6px;
+}
+#recentActivityList::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.recent-item {
+    background: white;
+    border-bottom: 1px solid #eee;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.recent-item:hover {
+    background: #f0f7ff;
+    border-left: 4px solid #007bff;
+}
+
+        #toast {
+            visibility: hidden;
+            min-width: 300px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 9999; /* Changed to 9999 to ensure it's on top */
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        #toast.show {
+            visibility: visible;
+            -webkit-animation: fadein 0.5s, fadeout 0.5s 4.5s;
+            animation: fadein 0.5s, fadeout 0.5s 4.5s;
+        }
+
+        @-webkit-keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @-webkit-keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+<h1>POS Network Gateway</h1>
+
+
+<div style="display: flex; gap: 20px; margin-bottom: 20px;">
+    <div class="card" style="flex: 1; text-align: center; margin-bottom: 0;">
+        <h4 style="margin:0; color: #666;">Total Blocks</h4>
+        <h2 id="stat-blocks" style="margin:10px 0; color: #007bff;">0</h2>
+    </div>
+    <div class="card" style="flex: 1; text-align: center; margin-bottom: 0;">
+        <h4 style="margin:0; color: #666;">Network Nodes</h4>
+        <h2 id="stat-nodes" style="margin:10px 0; color: #28a745;">1 Peer</h2>
+    </div>
+    <div class="card" style="flex: 1; text-align: center; margin-bottom: 0;">
+        <h4 style="margin:0; color: #666;">Chaincodes</h4>
+        <h2 style="margin:10px 0; color: #ffc107;">poscontract</h2>
+    </div>
+</div>
+
+
+<div class="card" style="border-left: 5px solid #ffc107;">
+    <h3>Recent Activity</h3>
+    <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+        Click any block below to inspect its details in the Explorer.
+    </p>
+    <div id="recentActivityList">
+        </div>
+</div>
+
+<div class="card" style="border-top: 5px solid #007bff;">
+    <h3>Universal Explorer</h3>
+    <div style="display: flex; gap: 10px;">
+        <input type="text" id="searchInput" placeholder="Search by ID (TX_1), Block (5), or Hash...">
+        <button onclick="executeSearch()" style="background: #007bff;">Search Ledger</button>
+    </div>
+    <div id="searchResult" style="margin-top: 15px;"></div>
+</div>
+
+<div class="card">
+    <h3>Transaction History Lookup</h3>
+    <input type="text" id="historyId" placeholder="Enter ID (e.g. TX_100)">
+    <button onclick="fetchHistory()">View Lifecycle</button>
+    <div id="historyView" style="margin-top:15px;"></div>
+</div>
+
+
+<div class="card">
+    <h3 id="form-title">Record New Transaction</h3> <div id="invokeForm">
+    <input type="text" id="tx_id" placeholder="Transaction ID">
+    <input type="text" id="rest_id" placeholder="Restaurant ID">
+    <input type="number" id="amount" placeholder="Amount">
+    <input type="text" id="stripe_id" placeholder="Stripe Payment ID">
+
+    <button type="button" id="submit-btn" onclick="submitTransaction()">Submit to Ledger</button>
+    <button type="button" onclick="resetFormUI()" style="background:#6c757d; margin-left:10px;">Cancel</button>
+</div>
+</div>
+
+
+<div id="toast"></div>
+
+<div class="card" style="border-left: 5px solid #28a745;">
+    <h3>Database Lookup (By ID)</h3>
+    <div style="display: flex; gap: 10px;">
+        <input type="text" id="dbSearchId" placeholder="Enter Exact ID (e.g. STRIPE_100)" style="margin: 0;">
+        <button onclick="lookupInDB()" style="background: #28a745;">Fetch from Ledger</button>
+    </div>
+    <div id="dbResult" style="margin-top: 10px; font-family: monospace; font-size: 12px;"></div>
+</div>
+
+<div class="card">
+    <h3>Ledger Records</h3>
+    <button onclick="loadData()">Refresh Data</button>
+    <div id="dataView"></div>
+</div>
+
+<script>
+let currentSearchResult = null;
+let lastSearchData = null;
+
+async function executeSearch() {
+    const inputField = document.getElementById('searchInput');
+    const input = inputField.value.trim();
+    const resultDiv = document.getElementById('searchResult');
+    
+    if (!input) {
+        showToast("Please enter a search term", "orange");
+        return;
+    }
+
+    // Flash effect to show the content is updating
+    resultDiv.style.transition = "background 0.3s";
+    resultDiv.style.background = "#fff9c4"; // Light yellow flash
+    setTimeout(() => { resultDiv.style.background = "transparent"; }, 500);
+
+    resultDiv.innerHTML = "<em>Searching ledger...</em>";
+
+    try {
+        const response = await fetch(`/search?input=${input}`);
+        const rawText = await response.text();
+        
+        console.log("Explorer Raw Response:", rawText);
+
+        const cleanJson = rawText.replace(/^Response:\s*/, "");
+
+        if (!response.ok) throw new Error("No record or block found.");
+
+        currentSearchResult = JSON.parse(cleanJson);
+
+        if (currentSearchResult.header) {
+            resultDiv.innerHTML = `
+                <div style="background:#e9f7fe; padding:15px; border-left:5px solid #007bff; border-radius:4px;">
+                    <h4 style="margin:0; color:#007bff;">Block #${currentSearchResult.header.number} Found</h4>
+                    <p style="font-size:12px; margin:10px 0;"><strong>Data Hash:</strong> ${currentSearchResult.header.data_hash}</p>
+                    <button type="button" onclick="viewRawData()" style="background:#007bff; font-size:11px; padding:5px 10px;">View Raw Block Data</button>
+                </div>`;
+        } else {
+            resultDiv.innerHTML = `
+                <div style="background:#d4edda; padding:15px; border-left:5px solid #28a745; border-radius:4px;">
+                    <h4 style="margin:0; color:#28a745;">Record Found: ${currentSearchResult.id}</h4>
+                    <button type="button" onclick="viewRawData()" style="background:#28a745; font-size:11px; padding:5px 10px;">View Raw Record Data</button>
+                </div>`;
+        }
+    } catch (err) {
+        resultDiv.innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
+    }
+}
+
+function viewRawData() {
+    if (!lastSearchData) {
+        alert("No data found to display.");
+        return;
+    }
+    
+    const jsonStr = JSON.stringify(lastSearchData, null, 4);    
+    const newWindow = window.open("", "_blank", "width=800,height=600");
+    newWindow.document.write("<pre>" + jsonStr + "</pre>");
+    newWindow.document.title = "Raw Ledger Data";
+}
+
+    let allTransactions = [];
+
+    async function loadData() {
+        try {
+            const res = await fetch('/query?channelid=poschannel&chaincodeid=poscontract&function=GetAllRecords');
+            const rawText = await res.text();
+            const jsonString = rawText.replace("Response: ", "");
+            const outerArray = JSON.parse(jsonString);
+
+            allTransactions = outerArray.map(item => JSON.parse(item));
+
+            renderTable(allTransactions);
+        } catch (err) {
+            console.error("Load error:", err);
+        }
+    }
+
+    async function submitTransaction() {
+        console.log("Submit button clicked!");
+
+        const txId = document.getElementById('tx_id').value;
+        const restId = document.getElementById('rest_id').value;
+        const amount = document.getElementById('amount').value;
+        const stripeId = document.getElementById('stripe_id').value;
+
+        const exists = allTransactions.some(t => t.id === txId);
+        const functionName = exists ? 'UpdateTransaction' : 'RecordTransaction';
+
+        console.log("Targeting function:", functionName);
+
+        const params = new URLSearchParams();
+        params.append('channelid', 'poschannel');
+        params.append('chaincodeid', 'poscontract');
+        params.append('function', functionName);
+        params.append('args', txId);
+        params.append('args', restId);
+        params.append('args', amount);
+        params.append('args', stripeId);
+
+        try {
+            const response = await fetch('/invoke', { method: 'POST', body: params });
+            const result = await response.text();
+
+            if (response.ok) {
+                const msg = exists ? `Updated Transaction ${txId}` : `Created Transaction ${txId}`;
+
+                showToast(msg, "#28a745"); 
+                resetFormUI();             
+                loadData();                
+            } else {
+                showToast("Error: " + result, "#dc3545");
+            }
+        } catch (err) {
+            showToast("Network Error", "#dc3545");
+        }
+    }
+
+    async function lookupInDB() {
+        const id = document.getElementById('dbSearchId').value;
+        const resultDiv = document.getElementById('dbResult');
+
+        if (!id) {
+            showToast("Please enter an ID to search", "orange");
+            return;
+        }
+
+        resultDiv.innerHTML = "Searching...";
+
+        try {
+            const url = `/query?channelid=poschannel&chaincodeid=poscontract&function=GetRecord&args=${id}`;
+            const res = await fetch(url);
+
+            if (!res.ok) throw new Error("ID not found on ledger");
+
+            const data = await res.json();
+
+            resultDiv.innerHTML = `
+        <div style="background: #e9ecef; padding: 15px; border-radius: 4px; border-left: 5px solid #28a745;">
+            <div style="margin-bottom: 10px;">
+                <strong>ID:</strong> ${data.id} <br>
+                <strong>Restaurant:</strong> ${data.restaurant_id} <br>
+                <strong>Amount:</strong> £${parseFloat(data.amount).toFixed(2)} <br>
+                <strong>Status:</strong> ${data.status} <br>
+                <strong>Stripe ID:</strong> ${data.stripe_payment_id}
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="preFillUpdate('${data.id}', '${data.restaurant_id}', '${data.amount}', '${data.stripe_payment_id}')"
+                        style="background:#ffc107; color:black; padding:5px 15px; font-size: 12px;">
+                    Edit This Record
+                </button>
+                <button onclick="deleteRecord('${data.id}')"
+                        style="background:#dc3545; color:white; padding:5px 15px; font-size: 12px;">
+                    Delete
+                </button>
+            </div>
+        </div>
+    `;
+        } catch (err) {
+            resultDiv.innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
+        }
+    }
+
+
+    function showToast(message, color) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.style.backgroundColor = color;
+        toast.className = "show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 5000);
+    }
+
+    function renderTable(data) {
+        let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Restaurant</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th> </tr>
+            </thead>
+            <tbody>
+    `;
+
+        data.forEach(tx => {
+            html += `
+            <tr>
+                <td><strong>${tx.id}</strong></td>
+                <td>${tx.restaurant_id}</td>
+                <td>£${parseFloat(tx.amount).toFixed(2)}</td>
+                <td>${tx.status}</td>
+                <td>
+                    <button onclick="preFillUpdate('${tx.id}', '${tx.restaurant_id}', '${tx.amount}', '${tx.stripe_payment_id}')" style="background:#ffc107; color:black; padding:5px 10px;">Edit</button>
+                    <button onclick="deleteRecord('${tx.id}')" style="background:#dc3545; padding:5px 10px;">Delete</button>
+                </td>
+            </tr>
+        `;
+        });
+        html += '</tbody></table>';
+        document.getElementById('dataView').innerHTML = html;
+    }
+
+    function preFillUpdate(id, rest, amt, stripe) {
+        document.getElementById('tx_id').value = id;
+        document.getElementById('rest_id').value = rest;
+        document.getElementById('amount').value = amt;
+        document.getElementById('stripe_id').value = stripe;
+
+        document.getElementById('form-title').innerText = "Update Transaction: " + id;
+        document.getElementById('submit-btn').innerText = "Confirm Update";
+        document.getElementById('submit-btn').style.background = "#ffc107";
+        document.getElementById('submit-btn').style.color = "black";
+
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function resetFormUI() {
+        document.getElementById('tx_id').value = '';
+        document.getElementById('rest_id').value = '';
+        document.getElementById('amount').value = '';
+        document.getElementById('stripe_id').value = '';
+
+        document.getElementById('form-title').innerText = "Record New Transaction";
+        document.getElementById('submit-btn').innerText = "Submit to Ledger";
+        document.getElementById('submit-btn').style.background = "#007bff";
+        document.getElementById('submit-btn').style.color = "white";
+    }
+
+    async function deleteRecord(id) {
+        if(!confirm(`Are you sure you want to delete ${id} from the World State?`)) return;
+
+        const params = new URLSearchParams();
+        params.append('channelid', 'poschannel');
+        params.append('chaincodeid', 'poscontract');
+        params.append('function', 'DeleteTransaction');
+        params.append('args', id);
+
+        try {
+            const response = await fetch('/invoke', { method: 'POST', body: params });
+            if (response.ok) {
+                showToast(`Record ${id} Deleted!`, "#dc3545");
+                loadData();
+            }
+        } catch (err) {
+            showToast("Delete failed: " + err.message, "red");
+        }
+    }
+
+    async function updateDashboardStats() {
+        try {
+            const res = await fetch('/chaininfo?channelid=poschannel');
+            const data = await res.arrayBuffer(); 
+            document.getElementById('stat-blocks').innerText = "Live"; 
+        } catch (err) {
+            console.error("Dashboard stats error:", err);
+        }
+    }
+
+    
+
+
+    async function updateStats() {
+        const res = await fetch('/chaininfo?channelid=poschannel');
+        const data = await res.json();
+        document.getElementById('stat-blocks').innerText = data.height;
+    }
+
+    async function fetchHistory() {
+        const id = document.getElementById('historyId').value;
+        const res = await fetch(`/history?id=${id}&channelid=poschannel&chaincodeid=poscontract`);
+        const data = await res.json();
+        
+        let html = "<ul>";
+data.forEach(h => {
+    html += `<li><strong>Tx:</strong> ${h.txId} <br> 
+             <strong>Time:</strong> ${h.timestamp} <br> 
+             <strong>Data:</strong> ${JSON.stringify(h.value)}</li><hr>`;
+});
+        document.getElementById('historyView').innerHTML = html + "</ul>";
+    }
+
+    // window.onload = () => {
+    //     // loadData();
+    //     updateStats();
+    //     // updateDashboardStats();
+    // };
+
+    window.onload = () => {
+    updateStats();          // Existing function
+    loadData();             // Existing function
+    updateRecentActivity(); // NEW: Initial load
+    
+    // Refresh the recent list every 30 seconds
+    setInterval(updateRecentActivity, 30000); 
+};
+
+
+async function fetchHistory() {
+    const idField = document.getElementById('historyId');
+    const id = idField.value.trim();
+    const historyView = document.getElementById('historyView');
+    
+    if (!id) {
+        showToast("Please enter an ID", "orange");
+        return;
+    }
+
+    historyView.innerHTML = "<em>Loading lifecycle history...</em>";
+
+    try {
+        const url = `/history?id=${id}&channelid=poschannel&chaincodeid=poscontract`;
+        const res = await fetch(url);
+        
+        const rawText = await res.text();
+        console.log("History Raw Response:", rawText);
+
+        const cleanJson = rawText.replace(/^Response:\s*/, "");
+
+        if (!res.ok) {
+            let errorMsg;
+            try { 
+                errorMsg = JSON.parse(cleanJson).error; 
+            } catch(e) { 
+                errorMsg = cleanJson || "Server Error"; 
+            }
+            throw new Error(errorMsg);
+        }
+
+        let data;
+        try {
+            data = JSON.parse(cleanJson);
+        } catch (e) {
+            console.error("JSON Parse failed:", cleanJson);
+            throw new Error("Invalid history data received from server.");
+        }
+
+        if (!data || data.length === 0) {
+            historyView.innerHTML = `<div class="alert">No history found for ID: ${id}</div>`;
+            return;
+        }
+
+        let html = '<div style="border-left: 3px solid #007bff; padding-left: 15px;">';
+        data.forEach(h => {
+            const status = h.isDelete ? '<span style="color:red">DELETED</span>' : '<span style="color:green">ACTIVE</span>';
+            const valStr = typeof h.value === 'string' ? h.value : JSON.stringify(h.value, null, 2);
+            
+            html += `
+                <div style="margin-bottom: 20px; background: #fff; padding: 10px; border: 1px solid #eee; border-radius: 4px;">
+                    <small style="color: #666;">${h.timestamp}</small><br>
+                    <strong>Status:</strong> ${status} <br>
+                    <strong>TxID:</strong> <small style="font-family: monospace;">${h.txId}</small> <br>
+                    <pre style="background: #f8f9fa; padding: 5px; font-size: 11px; margin-top:5px;">${valStr}</pre>
+                </div>`;
+        });
+        historyView.innerHTML = html + "</div>";
+
+    } catch (err) {
+        console.error("History UI Error:", err);
+        historyView.innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
+    }
+}
+
+
+
+async function executeSearch() {
+    const inputField = document.getElementById('searchInput');
+    const input = inputField.value.trim();
+    const resultDiv = document.getElementById('searchResult');
+    
+    if (!input) {
+        showToast("Please enter a search term", "orange");
+        return;
+    }
+
+    resultDiv.innerHTML = "<em>Searching ledger...</em>";
+
+    try {
+        const response = await fetch(`/search?input=${input}`);
+        
+        const rawText = await response.text();
+        console.log("Explorer Raw Response:", rawText);
+
+        const cleanJson = rawText.replace(/^Response:\s*/, "");
+
+        if (!response.ok) {
+            let errorMsg;
+            try { 
+                errorMsg = JSON.parse(cleanJson).error; 
+            } catch(e) { 
+                errorMsg = "No record or block found for: " + input; 
+            }
+            throw new Error(errorMsg);
+        }
+
+        let data;
+        try {
+            data = JSON.parse(cleanJson);
+        } catch (e) {
+            console.error("JSON Parse failed for Explorer:", cleanJson);
+            throw new Error("Invalid search data received.");
+        }
+
+if (data.header) {
+    currentSearchResult = data;
+    const blockNum = parseInt(data.header.number);
+
+
+    const navButtons = `
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <button onclick="quickSearch(${blockNum - 1})" 
+                    style="background:#6c757d; flex:1;" 
+                    ${blockNum <= 0 ? 'disabled' : ''}>
+                ← Previous Block (${blockNum - 1})
+            </button>
+            <button onclick="quickSearch(${blockNum + 1})" 
+                    style="background:#6c757d; flex:1;">
+                Next Block (${blockNum + 1}) →
+            </button>
+        </div>
+    `;
+
+    let txListHtml = "";
+    if (data.data && data.data.data) {
+        txListHtml = data.data.data.map((txRaw, index) => {
+            const tid = extractTxIdFromRaw(txRaw);
+            return `<div style="background:#fff; margin-top:5px; padding:10px; border:1px solid #ddd; border-radius:4px;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>Transaction #${index + 1}</strong>
+                            <a href="#" onclick="quickSearch('${tid}')" style="color:#007bff; font-size:12px;">Inspect Tx</a>
+                        </div>
+                        <small style="word-break:break-all; font-family:monospace; color:#666;">${tid || 'System/Config'}</small>
+                    </div>`;
+        }).join('');
+    }
+
+    resultDiv.innerHTML = `
+        <div style="background:#e9f7fe; padding:15px; border-left:5px solid #007bff; border-radius:4px;">
+            ${navButtons}
+            <h4 style="margin-top:0; color:#007bff;">Block #${blockNum} Overview</h4>
+            <p><strong>Block Hash:</strong> <small style="word-break:break-all;">${data.header.data_hash}</small></p>
+            <p><strong>Previous Hash:</strong> <small style="word-break:break-all;">${data.header.previous_hash}</small></p>
+            <hr>
+            <h5>Transactions in this Block</h5>
+            ${txListHtml || "<em>No user transactions</em>"}
+<div style="margin-top:15px; display: flex; flex-direction: column; gap: 10px;">
+    <button onclick="viewRawBlockData()" style="background:#444; flex:1;">Raw JSON</button>
+    <button onclick="viewDecodedBlockData()" style="background:#444; flex:1;">Decoded Data</button>
+</div>
+<div id="decodedResultsArea" style="margin-top:15px; display:none;"></div>
+        </div>`;
+} else if (data.id) {
+            resultDiv.innerHTML = `
+                <div style="background:#d4edda; padding:15px; border-left:5px solid #28a745; border-radius:4px;">
+                    <h4 style="margin-top:0; color:#28a745;">Record Found: ${data.id}</h4>
+                    <strong>Restaurant ID:</strong> ${data.restaurant_id}<br>
+                    <strong>Amount:</strong> £${parseFloat(data.amount).toFixed(2)}<br>
+                    <strong>Status:</strong> <span class="badge">${data.status}</span><br>
+                    <strong>Timestamp:</strong> ${data.timestamp}
+                </div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="alert">Search returned empty result for "${input}"</div>`;
+        }
+
+    } catch (err) {
+        console.error("Explorer Error:", err);
+        resultDiv.innerHTML = `<span style="color:red">Search Failed: ${err.message}</span>`;
+    }
+}
+
+
+function viewRawBlockData() {
+    if (!currentSearchResult) {
+        showToast("No block data found", "red");
+        return;
+    }
+    
+    const modal = document.getElementById('rawDataModal');
+    const content = document.getElementById('rawContent');
+    const title = document.getElementById('modalTitle');
+
+    title.innerText = "Raw Block Data (JSON)";
+    content.innerText = JSON.stringify(currentSearchResult, null, 4);
+    modal.style.display = 'block';
+}
+
+function extractTxIdFromRaw(base64Data) {
+    try {
+        const decoded = atob(base64Data);
+        const match = decoded.match(/[a-f0-9]{64}/);
+        return match ? match[0] : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function quickSearch(value) {
+    if (value === null || value < 0) return;
+    document.getElementById('searchInput').value = value;
+    executeSearch();
+}
+
+
+function decodeSmart(data) {
+    if (!data.data || !data.data.data) return "No transaction data found in this block.";
+
+    let decodedRecords = [];
+    
+    data.data.data.forEach((rawBase64, index) => {
+        try {
+            const binaryString = atob(rawBase64);
+            const jsonMatch = binaryString.match(/\{"id":".*?"\}/g);
+            
+            if (jsonMatch) {
+                jsonMatch.forEach(match => {
+                    try {
+                        const parsed = JSON.parse(match);
+                        decodedRecords.push({
+                            tx_index: index + 1,
+                            type: "Business Record",
+                            payload: parsed
+                        });
+                    } catch (e) { /* Not valid JSON, skip */ }
+                });
+            } else {
+                decodedRecords.push({
+                    tx_index: index + 1,
+                    type: "System/Config Transaction",
+                    payload: "Binary/Protobuf data (No readable JSON found)"
+                });
+            }
+        } catch (err) {
+            decodedRecords.push({ tx_index: index + 1, error: "Failed to decode segment" });
+        }
+    });
+
+    return decodedRecords;
+}
+
+
+function showDecodedData() {
+    const area = document.getElementById('decodedResultsArea');
+    if (!currentSearchResult) return;
+
+    const decoded = decodeSmart(currentSearchResult);
+    
+    let html = `<h5>Decoded Block Contents:</h5>`;
+    decoded.forEach(item => {
+        const color = item.type === "Business Record" ? "#d4edda" : "#f8f9fa";
+        html += `
+            <div style="background:${color}; padding:10px; border:1px solid #ddd; border-radius:4px; margin-bottom:10px; font-size:12px;">
+                <strong>Transaction #${item.tx_index}</strong> [${item.type}]<br>
+                <pre style="white-space: pre-wrap; margin-top:5px;">${JSON.stringify(item.payload, null, 2)}</pre>
+            </div>
+        `;
+    });
+
+    area.innerHTML = html;
+    area.style.display = area.style.display === 'none' ? 'block' : 'none';
+}
+
+function viewDecodedBlockData() {
+    if (!currentSearchResult || !currentSearchResult.data) {
+        showToast("No block data available", "red");
+        return;
+    }
+
+    const modal = document.getElementById('rawDataModal');
+    const content = document.getElementById('rawContent');
+    const title = document.getElementById('modalTitle');
+
+    title.innerText = "Decoded Ledger Records";
+
+    const decodedItems = [];
+    currentSearchResult.data.data.forEach((rawBase64, index) => {
+        try {
+            const binaryString = atob(rawBase64);
+            const jsonMatch = binaryString.match(/\{"id":".*?"\}/g);
+            
+            if (jsonMatch) {
+                jsonMatch.forEach(match => {
+                    try {
+                        decodedItems.push({
+                            tx_index: index + 1,
+                            type: "POS Business Record",
+                            content: JSON.parse(match)
+                        });
+                    } catch (e) {}
+                });
+            } else {
+                decodedItems.push({
+                    tx_index: index + 1,
+                    type: "System/Config",
+                    content: "Binary Protobuf Data"
+                });
+            }
+        } catch (err) {
+            decodedItems.push({ tx_index: index + 1, type: "Error", content: "Failed to decode" });
+        }
+    });
+
+    content.innerHTML = decodedItems.map(item => `
+        <div style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+            <span style="color: ${item.type === 'POS Business Record' ? '#28a745' : '#666'}; font-weight: bold; font-size: 10px; text-transform: uppercase;">
+                ${item.type}
+            </span> 
+            <br><strong>Transaction #${item.tx_index}</strong>
+            <pre style="background: #fff; border: 1px solid #ddd; padding: 10px; margin-top: 5px; font-family: monospace;">${JSON.stringify(item.content, null, 4)}</pre>
+        </div>`).join('');
+
+    modal.style.display = 'block';
+}
+
+
+async function updateRecentActivity() {
+    const listDiv = document.getElementById('recentActivityList');
+    try {
+        const infoRes = await fetch('/chaininfo?channelid=poschannel');
+        const info = await infoRes.json();
+        const height = parseInt(info.height); // Total blocks on ledger
+        
+        let html = "";
+        // Fetch all blocks from newest to oldest
+        for (let i = height - 1; i >= 0; i--) {
+            const blockRes = await fetch(`/search?input=${i}`);
+            const rawText = await blockRes.text();
+            const block = JSON.parse(rawText.replace(/^Response:\s*/, ""));
+
+            const txCount = block.data?.data?.length || 0;
+            const blockHash = block.header.data_hash.substring(0, 16);
+
+            // Create a clickable item that calls quickSearch for that block
+            html += `
+                <div class="recent-item" onclick="quickSearch(${i})">
+                    <div style="pointer-events: none;">
+                        <span style="background: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">
+                            BLOCK #${i}
+                        </span>
+                        <div style="margin-top: 5px;">
+                            <strong style="font-size: 13px;">${txCount} Transaction(s)</strong>
+                        </div>
+                        <div style="font-size: 11px; color: #888;">Hash: ${blockHash}...</div>
+                    </div>
+                    <div style="color: #007bff; font-size: 18px;">&rsaquo;</div>
+                </div>
+            `;
+        }
+        listDiv.innerHTML = html || "<em>No activity recorded yet.</em>";
+    } catch (err) {
+        console.error("Recent Activity Error:", err);
+        listDiv.innerHTML = `<small style="color:red; padding:10px;">Failed to load activity</small>`;
+    }
+}
+
+
+function quickSearch(value) {
+    if (value === null || value < 0) return;
+    
+    // Set the search input value
+    document.getElementById('searchInput').value = value;
+    
+    // Trigger the search logic
+    executeSearch();
+
+    // NEW: Scroll to the Universal Explorer section smoothly
+    const explorerSection = document.getElementById('searchResult');
+    explorerSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+</script>
+<div id="toast"></div>
+
+
+<!-- Modal for Raw Block Data -->
+<div id="rawDataModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.7);">
+    <div class="card" style="width:80%; max-height:80%; margin:5% auto; overflow:auto; position:relative;">
+        <button onclick="document.getElementById('rawDataModal').style.display='none'" style="position:sticky; top:0; float:right; background:#dc3545;">Close</button>
+        <h3 id="modalTitle">Raw Block Data (JSON)</h3>
+        <pre id="rawContent" style="background:#f8f9fa; padding:15px; font-size:12px; white-space: pre-wrap; word-wrap: break-word;"></pre>
+    </div>
+</div>
+
+</body>
+</html>

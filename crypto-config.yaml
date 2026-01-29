@@ -1,0 +1,17 @@
+# crypto-config.yaml
+OrdererOrgs:
+  - Name: Orderer
+    Domain: pos.com
+    Specs:
+      - Hostname: orderer0
+      - Hostname: orderer1
+      - Hostname: orderer2
+
+PeerOrgs:
+  - Name: POSBusiness
+    Domain: pos.com
+    EnableNodeOUs: true
+    Template:
+      Count: 2  # This creates peer0 and peer1
+    Users:
+      Count: 1  # This creates an Admin user

@@ -1,0 +1,131 @@
+#configtx.yaml
+################################################################################
+# ORGANIZATIONS
+################################################################################
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/pos.com/msp
+    Policies:
+      Readers: {Type: Signature, Rule: "OR('OrdererMSP.member')"}
+      Writers: {Type: Signature, Rule: "OR('OrdererMSP.member')"}
+      Admins:  {Type: Signature, Rule: "OR('OrdererMSP.admin')"}
+    OrdererEndpoints:
+      - orderer0.pos.com:7050
+
+  - &POSBusinessOrg
+    Name: POSBusiness
+    ID: POSBusinessMSP
+    MSPDir: ../organizations/peerOrganizations/pos.com/msp
+    Policies:
+      Readers: {Type: Signature, Rule: "OR('POSBusinessMSP.admin', 'POSBusinessMSP.peer', 'POSBusinessMSP.client')"}
+      Writers: {Type: Signature, Rule: "OR('POSBusinessMSP.admin', 'POSBusinessMSP.client')"}
+      Admins:  {Type: Signature, Rule: "OR('POSBusinessMSP.admin')"}
+      Endorsement: {Type: Signature, Rule: "OR('POSBusinessMSP.peer')"}
+    AnchorPeers:
+      - Host: peer0.pos.com
+        Port: 7051
+
+################################################################################
+# CAPABILITIES
+################################################################################
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_0: true
+
+################################################################################
+# APPLICATION
+################################################################################
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers: {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers: {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins: {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+    LifecycleEndorsement: {Type: ImplicitMeta, Rule: "MAJORITY Endorsement"}
+    Endorsement: {Type: ImplicitMeta, Rule: "MAJORITY Endorsement"}
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+################################################################################
+# ORDERER
+################################################################################
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  EtcdRaft:
+    Consenters:
+      - Host: orderer0.pos.com
+        Port: 7050
+        ClientTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.crt
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers: {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers: {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins: {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+    BlockValidation: {Type: ImplicitMeta, Rule: "ANY Writers"}
+
+################################################################################
+# CHANNEL
+################################################################################
+Channel: &ChannelDefaults
+  Policies:
+    Readers: {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers: {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins: {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+  Capabilities:
+    <<: *ChannelCapabilities
+
+################################################################################
+# PROFILES
+################################################################################
+Profiles:
+  POSChannelProfile:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *POSBusinessOrg
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+
+
+
+#
+#In Hyperledger Fabric Raft, being a "voter" is defined by the channel configuration, not just by being "online."
+#The Status Quo: Since only orderer0 was in your genesis block's Consenters list, it is currently the only node that can technically sign off on new blocks or configuration changes.
+#The Role of Others: When you joined orderer1 and orderer2 via osnadmin, they became "Followers." They keep a copy of the ledger and can help distribute blocks to peers, but they cannot cast a vote to elect a new leader if orderer0 goes down.
+
+
+# The Practical Risk (The "Hidden" Problem)
+# Even if you don't rebuild the channel, you will face a problem if orderer0 crashes or is stopped.
+# Because orderer1 and orderer2 aren't "voters" in the current config, they cannot elect a new leader among themselves.
+# The ordering service will stop working entirely until orderer0 is back online.
+# In a true 3-node cluster, you should be able to lose 1 node and keep running. In your current "unbalanced" setup, if you lose orderer0, the whole network freezes.
+
+# How to make them "Official" without a rebuild
+# If you want to fix this without starting over, you don't rebuild the genesis block; instead, you perform a Channel Configuration Update. This is the standard "production" way to add voters.
+# Fetch the current config block.
+# Add the TLS certificates of orderer1 and orderer2 to the Consenters list in the JSON.
+# Compute the update and Sign it with the Orderer Admin identity.
+# Submit the update to the channel.
+# Once that transaction is processed, orderer1 and orderer2 will instantly be promoted from "Followers" to "Voters/Consenters."
+
+
