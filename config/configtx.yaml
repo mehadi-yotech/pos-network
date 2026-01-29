@@ -108,11 +108,9 @@ Profiles:
 
 
 
-#
 #In Hyperledger Fabric Raft, being a "voter" is defined by the channel configuration, not just by being "online."
 #The Status Quo: Since only orderer0 was in your genesis block's Consenters list, it is currently the only node that can technically sign off on new blocks or configuration changes.
 #The Role of Others: When you joined orderer1 and orderer2 via osnadmin, they became "Followers." They keep a copy of the ledger and can help distribute blocks to peers, but they cannot cast a vote to elect a new leader if orderer0 goes down.
-
 
 # The Practical Risk (The "Hidden" Problem)
 # Even if you don't rebuild the channel, you will face a problem if orderer0 crashes or is stopped.
