@@ -69,18 +69,6 @@
 //	return gw.GetNetwork(os.Getenv("CHANNEL_ID")).GetContract(os.Getenv("CHAINCODE_ID"))
 //}
 
-/*
-Copyright 2021 IBM All Rights Reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
-
-/*
-Copyright 2021 IBM All Rights Reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
-
 package main
 
 import (
@@ -139,18 +127,11 @@ func main() {
 	// Configuration
 	chaincodeName := "poscontract"
 	channelName := "poschannel"
-
 	network := gw.GetNetwork(channelName)
 	contract := network.GetContract(chaincodeName)
 
 	uniqueID := fmt.Sprintf("TX_POS_%d", time.Now().Unix())
-	// Create a new transaction
-	// Arguments: ID, RestaurantID, Amount, StripeID
 	recordTransaction(contract, uniqueID, "YoTech_Cafe", "125.50", "ch_stripe_new_999")
-
-	// Let's fetch an existing record
-	// Note: Change "tx101" to an ID you know exists in your ledger
-	// fetchRecordByID(contract, "STRIPE_100")
 	getAllRecords(contract)
 }
 

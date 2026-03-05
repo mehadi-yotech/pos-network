@@ -187,6 +187,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ../organizations/peerOrganizations/pos.com/peers/peer1.pos.com/msp:/etc/hyperledger/fabric/msp
       - ../organizations/peerOrganizations/pos.com/peers/peer1.pos.com/tls:/etc/hyperledger/fabric/tls
+      - ../channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
     ports:
       - 9051:9051
     networks:
@@ -195,15 +196,15 @@ services:
   couchdb0:
     container_name: couchdb0
     image: couchdb:3.1.1
-    environment: [COUCHDB_USER=admin, COUCHDB_PASSWORD=adminpw]
+    environment: [ COUCHDB_USER=admin, COUCHDB_PASSWORD=adminpw ]
     ports:
       - 5984:5984
-    networks: [pos_network]
+    networks: [ pos_network ]
 
   couchdb1:
     container_name: couchdb1
     image: couchdb:3.1.1
-    environment: [COUCHDB_USER=admin, COUCHDB_PASSWORD=adminpw]
+    environment: [ COUCHDB_USER=admin, COUCHDB_PASSWORD=adminpw ]
     ports:
       - 7984:5984
-    networks: [pos_network]
+    networks: [ pos_network ]

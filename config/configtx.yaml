@@ -13,7 +13,8 @@ Organizations:
       Admins:  {Type: Signature, Rule: "OR('OrdererMSP.admin')"}
     OrdererEndpoints:
       - orderer0.pos.com:7050
-
+      - orderer1.pos.com:7050
+      - orderer2.pos.com:7050
   - &POSBusinessOrg
     Name: POSBusiness
     ID: POSBusinessMSP
@@ -60,12 +61,20 @@ Orderer: &OrdererDefaults
   EtcdRaft:
     Consenters:
       - Host: orderer0.pos.com
-        Port: 7050
+        Port: 7054
         ClientTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.crt
         ServerTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.crt
+      - Host: orderer1.pos.com
+        Port: 7054
+        ClientTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer1.pos.com/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer1.pos.com/tls/server.crt
+      - Host: orderer2.pos.com
+        Port: 7054
+        ClientTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer2.pos.com/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/pos.com/orderers/orderer2.pos.com/tls/server.crt
   BatchTimeout: 2s
   BatchSize:
-    MaxMessageCount: 10
+    # MaxMessageCount: 10
     AbsoluteMaxBytes: 99 MB
     PreferredMaxBytes: 512 KB
   Organizations:
