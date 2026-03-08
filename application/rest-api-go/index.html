@@ -420,13 +420,15 @@ function viewRawData() {
     }
 
     
-
-
-    async function updateStats() {
-        const res = await fetch('/chaininfo?channelid=poschannel');
-        const data = await res.json();
-        document.getElementById('stat-blocks').innerText = data.height;
+async function updateStats() {
+    const res = await fetch('/chaininfo?channelid=poschannel');
+    const data = await res.json();
+    document.getElementById('stat-blocks').innerText = data.height;
+    if (data.peers) {
+        document.getElementById('stat-nodes').innerText = data.peers.length + ' Peer(s)';
     }
+}
+
 
     async function fetchHistory() {
         const id = document.getElementById('historyId').value;

@@ -86,6 +86,7 @@ func (setup OrgSetup) GetChainInfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"height": blockchainInfo.Height,
+		"peers":  []string{"peer0.pos.com", "peer1.pos.com"}, // ← add this
 	})
 }
 
