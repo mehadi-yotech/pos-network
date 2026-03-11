@@ -355,12 +355,7 @@
             POS Explorer
             <span class="pill">Hyperledger Fabric</span>
         </div>
-        <div class="nav-links">
-            <span>Overview</span>
-            <span>Blocks</span>
-            <span>Transactions</span>
-            <span>Ledger Tools</span>
-        </div>
+        <div class="nav-links"></div>
     </div>
 
     <div class="container">
@@ -472,6 +467,9 @@
 <script>
 let currentSearchResult = null;
 let allTransactions = [];
+let isLoadingData = false;
+let wsClient = null;
+let wsPollInterval = null;
 
 function showToast(message, color) {
     const toast = document.getElementById("toast");
@@ -495,6 +493,8 @@ async function updateStats() {
 }
 
 async function loadData() {
+    if (isLoadingData) return;
+    isLoadingData = true;
     try {
         const res = await fetch('/query?channelid=poschannel&chaincodeid=poscontract&function=GetAllRecords');
         const rawText = await res.text();
@@ -508,6 +508,8 @@ async function loadData() {
         renderRecentTransactions(allTransactions);
     } catch (err) {
         console.error("Load error:", err);
+    } finally {
+        isLoadingData = false;
     }
 }
 
@@ -526,7 +528,7 @@ function renderTable(data) {
                         <th>Restaurant</th>
                         <th>Amount</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -541,7 +543,6 @@ function renderTable(data) {
                 <td><span class="tag">${tx.status}</span></td>
                 <td>
                     <button class="btn warning" onclick="preFillUpdate('${tx.id}', '${tx.restaurant_id}', '${tx.amount}', '${tx.stripe_payment_id}')">Edit</button>
-                    <button class="btn danger" onclick="deleteRecord('${tx.id}')">Delete</button>
                 </td>
             </tr>
         `;
@@ -627,26 +628,6 @@ function resetFormUI() {
     document.getElementById('submit-btn').className = "btn";
 }
 
-async function deleteRecord(id) {
-    if(!confirm(`Are you sure you want to delete ${id} from the World State?`)) return;
-
-    const params = new URLSearchParams();
-    params.append('channelid', 'poschannel');
-    params.append('chaincodeid', 'poscontract');
-    params.append('function', 'DeleteTransaction');
-    params.append('args', id);
-
-    try {
-        const response = await fetch('/invoke', { method: 'POST', body: params });
-        if (response.ok) {
-            showToast(`Record ${id} Deleted!`, "#e45a5a");
-            loadData();
-        }
-    } catch (err) {
-        showToast("Delete failed: " + err.message, "#e45a5a");
-    }
-}
-
 async function lookupInDB() {
     const id = document.getElementById('dbSearchId').value;
     const resultDiv = document.getElementById('dbResult');
@@ -675,7 +656,6 @@ async function lookupInDB() {
                 <div><strong>Stripe ID:</strong> ${data.stripe_payment_id}</div>
                 <div class="actions" style="margin-top:10px;">
                     <button class="btn warning" onclick="preFillUpdate('${data.id}', '${data.restaurant_id}', '${data.amount}', '${data.stripe_payment_id}')">Edit This Record</button>
-                    <button class="btn danger" onclick="deleteRecord('${data.id}')">Delete</button>
                 </div>
             </div>
         `;
@@ -960,7 +940,54 @@ window.onload = () => {
     loadData();
     updateRecentActivity();
     setInterval(updateRecentActivity, 30000);
+    connectWebSocket();
 };
+
+function startPollingFallback() {
+    if (wsPollInterval) return;
+    wsPollInterval = setInterval(loadData, 15000);
+}
+
+function connectWebSocket() {
+    if (!("WebSocket" in window)) {
+        startPollingFallback();
+        return;
+    }
+
+    const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${scheme}://${window.location.host}/ws`;
+
+    wsClient = new WebSocket(wsUrl);
+
+    wsClient.onopen = () => {
+        if (wsPollInterval) {
+            clearInterval(wsPollInterval);
+            wsPollInterval = null;
+        }
+    };
+
+    wsClient.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === "chain_update") {
+                updateStats();
+                updateRecentActivity();
+                loadData();
+            }
+        } catch (e) {
+            console.warn("WS parse error:", e);
+        }
+    };
+
+    wsClient.onerror = () => {
+        if (wsClient) wsClient.close();
+    };
+
+    wsClient.onclose = () => {
+        startPollingFallback();
+        setTimeout(connectWebSocket, 3000);
+    };
+}
 </script>
 </body>
 </html>
