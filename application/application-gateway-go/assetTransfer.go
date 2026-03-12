@@ -203,21 +203,6 @@ func updateTransaction(contract *client.Contract, id string, restaurantID string
 	fmt.Printf("*** Transaction updated successfully\n")
 }
 
-func deleteTransaction(contract *client.Contract, id string) {
-	fmt.Printf("\n--> Submit Transaction: DeleteTransaction, ID: %s\n", id)
-
-	_, err := contract.Submit("DeleteTransaction",
-		client.WithArguments(id),
-		client.WithEndorsingOrganizations("POSBusinessMSP"),
-	)
-
-	if err != nil {
-		panic(fmt.Errorf("failed to submit transaction: %w", err))
-	}
-
-	fmt.Printf("*** Transaction deleted successfully\n")
-}
-
 // newGrpcConnection creates a gRPC connection to the Gateway server.
 func newGrpcConnection() *grpc.ClientConn {
 	certificatePEM, err := os.ReadFile(tlsCertPath)

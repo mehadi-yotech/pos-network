@@ -125,18 +125,6 @@ func (s *SmartContract) UpdateTransaction(ctx contractapi.TransactionContextInte
 	return ctx.GetStub().PutState(id, newRecordBytes)
 }
 
-func (s *SmartContract) DeleteTransaction(ctx contractapi.TransactionContextInterface, id string) error {
-	recordBytes, err := ctx.GetStub().GetState(id)
-	if err != nil {
-		return fmt.Errorf("failed to read from world state: %v", err)
-	}
-	if recordBytes == nil {
-		return fmt.Errorf("the record %s does not exist", id)
-	}
-
-	return ctx.GetStub().DelState(id)
-}
-
 func (s *SmartContract) GetHistory(ctx contractapi.TransactionContextInterface, id string) ([]map[string]interface{}, error) {
 	resultsIterator, err := ctx.GetStub().GetHistoryForKey(id)
 	if err != nil {

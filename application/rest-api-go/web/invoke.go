@@ -10,7 +10,7 @@ import (
 func (setup *OrgSetup) Invoke(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received Invoke request")
 	if err := r.ParseForm(); err != nil {
-		fmt.Fprintf(w, "ParseForm() err: %s", err)
+		http.Error(w, fmt.Sprintf("ParseForm() err: %s", err), http.StatusBadRequest)
 		return
 	}
 	chainCodeName := r.FormValue("chaincodeid")
@@ -26,14 +26,18 @@ func (setup *OrgSetup) Invoke(w http.ResponseWriter, r *http.Request) {
 		client.WithArguments(args...),
 		client.WithEndorsingOrganizations(setup.MSPID),
 	)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error creating txn proposal: %s", err), http.StatusInternalServerError)
+		return
+	}
 	txn_endorsed, err := txn_proposal.Endorse()
 	if err != nil {
-		fmt.Fprintf(w, "Error endorsing txn: %s", err)
+		http.Error(w, fmt.Sprintf("Error endorsing txn: %s", err), http.StatusInternalServerError)
 		return
 	}
 	txn_committed, err := txn_endorsed.Submit()
 	if err != nil {
-		fmt.Fprintf(w, "Error submitting transaction: %s", err)
+		http.Error(w, fmt.Sprintf("Error submitting transaction: %s", err), http.StatusInternalServerError)
 		return
 	}
 	w.Write([]byte(txn_committed.TransactionID()))

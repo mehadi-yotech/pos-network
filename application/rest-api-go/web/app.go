@@ -33,7 +33,7 @@ func Serve(setups OrgSetup) {
 	http.HandleFunc("/search", setups.UniversalSearch)
 	http.HandleFunc("/ws", setups.ServeWS)
 
-	fmt.Println("Listening (http://localhost:3000/)...")
+	fmt.Println("Listening (http://10.10.100.108:3000/)...")
 	if err := http.ListenAndServe(":3000", nil); err != nil {
 		fmt.Println(err)
 	}
