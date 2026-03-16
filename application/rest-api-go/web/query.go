@@ -1,15 +1,18 @@
 package web
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"crypto/sha256"
-	"encoding/base64"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-protos-go/common"
 )
 
@@ -120,6 +123,12 @@ func (setup OrgSetup) UniversalSearch(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+	}
+
+	if block, ok := findBlockByHashOrDataHash(qscc, channelID, input); ok {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(block)
+		return
 	}
 
 	res, err := poscc.EvaluateTransaction("GetRecord", input)
@@ -233,6 +242,83 @@ func computeBlockHash(block *common.Block) string {
 	headerBytes := []byte(fmt.Sprintf("%d%x%x", block.Header.Number, block.Header.PreviousHash, block.Header.DataHash))
 	hash := sha256.Sum256(headerBytes)
 	return base64.StdEncoding.EncodeToString(hash[:])
+}
+
+func findBlockByHashOrDataHash(qscc *client.Contract, channelID, input string) (*common.Block, bool) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil, false
+	}
+
+	hashBytes, ok := decodeHashInput(input)
+	if !ok {
+		return nil, false
+	}
+
+	infoRes, err := qscc.EvaluateTransaction("GetChainInfo", channelID)
+	if err != nil {
+		return nil, false
+	}
+	chainInfo := &common.BlockchainInfo{}
+	if err := proto.Unmarshal(infoRes, chainInfo); err != nil {
+		return nil, false
+	}
+
+	height := int(chainInfo.Height)
+	for i := height - 1; i >= 0; i-- {
+		res, err := qscc.EvaluateTransaction("GetBlockByNumber", channelID, strconv.Itoa(i))
+		if err != nil {
+			continue
+		}
+
+		block := &common.Block{}
+		if err := proto.Unmarshal(res, block); err != nil {
+			continue
+		}
+
+		if bytes.Equal(block.Header.DataHash, hashBytes) || bytes.Equal(block.Header.PreviousHash, hashBytes) {
+			return block, true
+		}
+	}
+
+	return nil, false
+}
+
+func decodeHashInput(input string) ([]byte, bool) {
+	clean := strings.TrimSpace(strings.TrimPrefix(strings.ToLower(input), "0x"))
+	if clean == "" {
+		return nil, false
+	}
+
+	if isHexString(clean) && len(clean)%2 == 0 {
+		if b, err := hex.DecodeString(clean); err == nil {
+			return b, true
+		}
+	}
+
+	encoders := []*base64.Encoding{
+		base64.StdEncoding,
+		base64.RawStdEncoding,
+		base64.URLEncoding,
+		base64.RawURLEncoding,
+	}
+	for _, enc := range encoders {
+		if b, err := enc.DecodeString(input); err == nil {
+			return b, true
+		}
+	}
+
+	return nil, false
+}
+
+func isHexString(s string) bool {
+	for _, r := range s {
+		if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func decodeBlockData(rawBytes []byte) {

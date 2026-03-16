@@ -110,6 +110,7 @@
             width: 280px;
             height: 280px;
             background: radial-gradient(circle, rgba(33, 201, 138, 0.15), transparent 60%);
+            pointer-events: none;
         }
 
         .hero-title {
@@ -737,7 +738,7 @@ async function executeSearch() {
     resultDiv.innerHTML = "<em>Searching ledger...</em>";
 
     try {
-        const response = await fetch(`/search?input=${input}`);
+        const response = await fetch(`/search?input=${encodeURIComponent(input)}`);
         const rawText = await response.text();
         const cleanJson = rawText.replace(/^Response:\s*/, "");
 
